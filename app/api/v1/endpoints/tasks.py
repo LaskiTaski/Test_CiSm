@@ -18,9 +18,9 @@ router = APIRouter()
 
 @router.post("", response_model=TaskResponse, status_code=201)
 async def create_task(
-    task_in: TaskCreate,
-    db: AsyncSession = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
+        task_in: TaskCreate,
+        db: AsyncSession = Depends(get_db),
+        task_service: TaskService = Depends(get_task_service),
 ):
     task = await task_service.create_task(db, task_in)
     return task
@@ -28,12 +28,12 @@ async def create_task(
 
 @router.get("", response_model=TaskListResponse)
 async def list_tasks(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
-    status: Optional[TaskStatus] = None,
-    priority: Optional[TaskPriority] = None,
-    db: AsyncSession = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
+        page: int = Query(1, ge=1),
+        page_size: int = Query(10, ge=1, le=100),
+        status: Optional[TaskStatus] = None,
+        priority: Optional[TaskPriority] = None,
+        db: AsyncSession = Depends(get_db),
+        task_service: TaskService = Depends(get_task_service),
 ):
     tasks, total = await task_service.list_tasks(
         db, page=page, page_size=page_size, status=status, priority=priority
@@ -48,9 +48,9 @@ async def list_tasks(
 
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
+        task_id: int,
+        db: AsyncSession = Depends(get_db),
+        task_service: TaskService = Depends(get_task_service),
 ):
     task = await task_service.get_task(db, task_id)
     if not task:
@@ -60,9 +60,9 @@ async def get_task(
 
 @router.get("/{task_id}/status", response_model=TaskStatusResponse)
 async def get_task_status(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
+        task_id: int,
+        db: AsyncSession = Depends(get_db),
+        task_service: TaskService = Depends(get_task_service),
 ):
     task = await task_service.get_task(db, task_id)
     if not task:
@@ -72,9 +72,9 @@ async def get_task_status(
 
 @router.delete("/{task_id}", status_code=204)
 async def cancel_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-    task_service: TaskService = Depends(get_task_service),
+        task_id: int,
+        db: AsyncSession = Depends(get_db),
+        task_service: TaskService = Depends(get_task_service),
 ):
     success = await task_service.cancel_task(db, task_id)
     if not success:

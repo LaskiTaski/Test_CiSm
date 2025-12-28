@@ -74,3 +74,6 @@ logs/
 *.swp
 temp/
 tmp/
+
+# Project specific
+project_analysis.md

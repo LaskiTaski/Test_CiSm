@@ -6,15 +6,20 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: taskdb
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    command: postgres -c max_connections=100 -c shared_buffers=256MB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - task-network
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -25,11 +30,16 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - task-network
+    restart: unless-stopped
 
   api:
     build:
@@ -37,18 +47,38 @@ services:
       dockerfile: Dockerfile
     container_name: task_api
     environment:
+      # Application
+      PROJECT_NAME: "Task Service"
+      VERSION: "1.0.0"
+      API_V1_PREFIX: "/api/v1"
+      LOG_LEVEL: INFO
+
+      # PostgreSQL
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: taskdb
+      DB_POOL_SIZE: 5
+      DB_MAX_OVERFLOW: 10
+
+      # RabbitMQ
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       RABBITMQ_QUEUE: tasks
+
+      # Worker
+      WORKER_CONCURRENCY: 3
+      WORKER_MAX_RETRIES: 3
+
+      # Features
+      ENABLE_METRICS: "true"
     ports:
       - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,25 +86,42 @@ services:
         condition: service_healthy
     command: >
       sh -c "
-        uv run alembic upgrade head &&
-        uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+        /app/.venv/bin/alembic upgrade head &&
+        /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
+    networks:
+      - task-network
+    restart: unless-stopped
 
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     environment:
+      # Application
+      LOG_LEVEL: INFO
+
+      # PostgreSQL
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: taskdb
+      DB_POOL_SIZE: 5
+      DB_MAX_OVERFLOW: 10
+
+      # RabbitMQ
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
       RABBITMQ_QUEUE: tasks
+
+      # Worker
+      WORKER_CONCURRENCY: 3
+      WORKER_MAX_RETRIES: 3
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,6 +131,14 @@ services:
         condition: service_started
     deploy:
       replicas: 2
+    networks:
+      - task-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  rabbitmq_data:
+
+networks:
+  task-network:
+    driver: bridge

@@ -2,7 +2,7 @@ from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.task import Task, TaskStatusEnum
+from app.models.task import Task
 from app.schemas.task import TaskPriority, TaskStatus
 
 
